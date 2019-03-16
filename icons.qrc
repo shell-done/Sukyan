@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/mode_cursor.png</file>
+        <file>icons/mode_drawing.png</file>
+        <file>icons/mode_polygon.png</file>
+        <file>icons/open_file.png</file>
+        <file>icons/tool_bucket.png</file>
+        <file>icons/tool_ellipse.png</file>
+        <file>icons/tool_line.png</file>
+        <file>icons/tool_pen.png</file>
+        <file>icons/tool_rectangle.png</file>
+        <file>icons/tool_rubber.png</file>
+        <file>icons/save_file_as.png</file>
+        <file>icons/save_file.png</file>
+        <file>icons/marong.png</file>
+        <file>icons/ultrasound.png</file>
+    </qresource>
+</RCC>
