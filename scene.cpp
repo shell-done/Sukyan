@@ -1,8 +1,13 @@
 #include "scene.h"
 
-Scene::Scene(QPixmap* pxm, PolygonsList* polyList) : QGraphicsScene (0, 0, 100, 100), currentDrawingPixmap(pxm->size()), drawingPixmap(pxm->size()) {
-	backgroundGraphicsPixmap = this->addPixmap(*pxm);
-    setSceneRect(-100, -100, pxm->width() + 200, pxm->height() + 200);
+Scene::Scene(QString fp, PolygonsList* polyList) : QGraphicsScene (0, 0, 100, 100) {
+	backgroundPixmap = QPixmap(fp);
+	backgroundGraphicsPixmap = this->addPixmap(backgroundPixmap);
+	editedBackgroundPixmap = new QPixmap(backgroundPixmap);
+	setSceneRect(-100, -100, backgroundPixmap.width() + 200, backgroundPixmap.height() + 200);
+
+	currentDrawingPixmap = QPixmap(backgroundPixmap.size());
+	drawingPixmap = QPixmap(backgroundPixmap.size());
 
     drawingPixmap.fill(Qt::transparent);
     drawingGraphicsPixmap = this->addPixmap(drawingPixmap);
@@ -23,6 +28,9 @@ Scene::Scene(QPixmap* pxm, PolygonsList* polyList) : QGraphicsScene (0, 0, 100, 
     penCursor->setPen(cursorPen);
 
 	buttonPressed = Qt::NoButton;
+	buffer = nullptr;
+	currentContrast = 0;
+	currentBrightness = 0;
 
 	graphicsPolygons << this->addPolygon(polyList->at(0));
 	polygons = polyList;
@@ -32,6 +40,8 @@ Scene::Scene(QPixmap* pxm, PolygonsList* polyList) : QGraphicsScene (0, 0, 100, 
 
 Scene::~Scene() {
 	delete polygons;
+	delete buffer;
+	delete editedBackgroundPixmap;
 }
 
 void Scene::setMode(Sukyan::mode m) {mode = m;}
@@ -55,6 +65,14 @@ void Scene::importPolygons(QWidget* parent) {
 
 bool Scene::getImageSaved() {return imageSaved;}
 bool Scene::getPolygonsSaved() {return polygons->saved();}
+
+QPixmap* Scene::getBackgroundPixmap() {
+	QPainter p(editedBackgroundPixmap);
+	p.drawPixmap(0, 0, backgroundGraphicsPixmap->pixmap());
+	p.end();
+
+	return editedBackgroundPixmap;
+}
 
 const QPixmap* Scene::getDrawingPixmap() {
 	return &drawingPixmap;
@@ -89,6 +107,11 @@ QPixmap Scene::getPolygonsPixmap() {
 
 PolygonsList* Scene::getPolygonsList() {return polygons;}
 
+void Scene::setContrast(int b, int c) {
+	currentBrightness = b;
+	currentContrast = c;
+	changeContrast(0, 0);
+}
 
 void Scene::updateScene() {
 	while(graphicsPolygons.size()) {
@@ -144,13 +167,18 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event) {
     if(mode == Sukyan::CURSOR)
         return;
 
+	if(mode == Sukyan::CONTRAST) {
+		firstClick = event->screenPos();
+		buttonPressed = event->button();
+		return;
+	}
+
 	pointGrabbed = false;
 	if(mode == Sukyan::POLYGON) {
 		if(polygons->clickOnPoint(event->scenePos(), 1)) {
 			pointGrabbed = true;
 			grabbedPointDist.setX(event->scenePos().toPoint().x() - polygons->getCurrentPolygonPoint().x());
 			grabbedPointDist.setY(event->scenePos().toPoint().y() - polygons->getCurrentPolygonPoint().y());
-
 
 			return;
 		}
@@ -190,6 +218,14 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event) {
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
 	if(mode == Sukyan::CURSOR)
         return;
+
+	if(mode == Sukyan::CONTRAST) {
+		if(buttonPressed == Qt::LeftButton || buttonPressed == Qt::RightButton)
+			changeContrast(event->screenPos().x() - firstClick.x(), firstClick.y() - event->screenPos().y());
+
+		backgroundGraphicsPixmap->setCursor(Qt::SizeAllCursor);
+		return;
+	}
 
 	if(mode == Sukyan::POLYGON) {
 		if(pointGrabbed) {
@@ -251,6 +287,22 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
     buttonPressed = Qt::NoButton;
 	pointGrabbed = false;
 
+	if(mode == Sukyan::CONTRAST) {
+		int contrast = firstClick.y() - event->screenPos().y();
+		int brightness = event->screenPos().x() - firstClick.x();
+
+		if(brightness < -128) brightness = -128;
+		else if(brightness > 128) brightness = 128;
+		currentBrightness = brightness;
+
+		if(contrast < - 128) contrast = -128;
+		else if(contrast > 128) contrast = 128;
+		currentContrast = contrast;
+		backgroundGraphicsPixmap->setCursor(Qt::ArrowCursor);
+
+		emit contrastChanged(currentBrightness, currentContrast);
+	}
+
     if(tool == Sukyan::LINE || tool == Sukyan::RECTANGLE || tool == Sukyan::ELLIPSE) {
         QPainter painter(&drawingPixmap);
         painter.drawPixmap(0, 0, currentDrawingPixmap);
@@ -295,4 +347,49 @@ void Scene::useBucket(QPoint p) {
 
     QPainter painter(&drawingPixmap);
     painter.drawPixmap(0, 0, QPixmap::fromImage(drawingImage));
+}
+
+void Scene::changeContrast(int brightness, int contrast) {
+	brightness += currentBrightness;
+	if(brightness < -128) brightness = -128;
+	else if(brightness > 128) brightness = 128;
+
+	contrast += currentContrast;
+	if(contrast < - 128) contrast = -128;
+	else if(contrast > 128) contrast = 128;
+
+	auto truncate = [] (double value) {
+		if(value < 0) return static_cast<unsigned char>(0);
+		else if(value > 255) return static_cast<unsigned char>(255);
+		else return static_cast<unsigned char>(value);
+	};
+
+	double factor = (259.0 * (contrast + 255.0)) / (255.0 * (259.0 - contrast));
+
+	QImage newImg(backgroundPixmap.toImage());
+	int w = backgroundPixmap.width();
+	int h = backgroundPixmap.height();
+
+	if(!buffer)
+		buffer = new unsigned char[4 * w * h];
+	unsigned char* bit = newImg.bits();
+
+	unsigned char r,g,b;
+	for(int i = 0; i < h; i++){
+		for(int j = 0; j < w; j++){
+			int currIdx = 4 * (i * w + j);
+
+			r = truncate(factor * (*(bit + currIdx    ) - 128 + 128 + brightness));
+			g = truncate(factor * (*(bit + currIdx + 1) - 128 + 128 + brightness));
+			b = truncate(factor * (*(bit + currIdx + 2) - 128 + 128 + brightness));
+
+			buffer[currIdx    ] = r;
+			buffer[currIdx + 1] = g;
+			buffer[currIdx + 2] = b;
+			buffer[currIdx + 3] = 255;
+		}
+	}
+
+	newImg = QImage(buffer, w, h, QImage::Format_RGB32);
+	backgroundGraphicsPixmap->setPixmap(QPixmap::fromImage(newImg));
 }

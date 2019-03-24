@@ -27,29 +27,33 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 	});
 	connect(dockImage, SIGNAL(ratioChanged(double)), dockSelection, SLOT(setSurfaceRatio(double)));
 
+	contrastDialog = new ContrastDialog(this);
+	contrastDialog->hide();
+
 	setWindowIcon(QIcon(":/icons/ultrasound.png"));
 }
 
 /*        INITIALIZATION        */
 void MainWindow::initDockWidget() {
     QDockWidget* dock = new QDockWidget(tr("Image"), this);
-	dock->setAllowedAreas(Qt::LeftDockWidgetArea);
+	dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockImage = new DockImage(dock);
     dock->setWidget(dockImage);
 	dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
 	action_dockImage = dock->toggleViewAction();
-    addDockWidget(Qt::LeftDockWidgetArea, dock);
+	addDockWidget(Qt::LeftDockWidgetArea, dock);
 
 	dock = new QDockWidget(tr("Drawing"), this);
-	dock->setAllowedAreas(Qt::LeftDockWidgetArea);
+	dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	dockDrawing = new DockDrawing(dock);
 	dock->setWidget(dockDrawing);
 	dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
+	dock->setVisible(false);
 	action_dockDrawing = dock->toggleViewAction();
 	addDockWidget(Qt::LeftDockWidgetArea, dock);
 
     dock = new QDockWidget(tr("Selection"), this);
-	dock->setAllowedAreas(Qt::LeftDockWidgetArea);
+	dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockSelection = new DockSelection(dock);
     dock->setWidget(dockSelection);
 	dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
@@ -57,7 +61,7 @@ void MainWindow::initDockWidget() {
     addDockWidget(Qt::LeftDockWidgetArea, dock);
 
     dock = new QDockWidget(tr("Explorer"), this);
-	dock->setAllowedAreas(Qt::RightDockWidgetArea);
+	dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dockExplorer = new DockExplorer(dock);
     dock->setWidget(dockExplorer);
 	dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
@@ -103,22 +107,28 @@ void MainWindow::initActions() {
 
     action_modeCursor = new QAction(tr("&Cursor"), this);
     action_modeCursor->setIcon(QIcon(":/icons/mode_cursor.png"));
-	action_modeCursor->setShortcut(QKeySequence("F2"));
+	action_modeCursor->setShortcut(QKeySequence("F1"));
     action_modeCursor->setCheckable(true);
     action_modeCursor->setChecked(true);
     connect(action_modeCursor, &QAction::triggered, [this](){setMode(Sukyan::CURSOR);});
 
     action_modeDrawing = new QAction(tr("&Drawing"), this);
     action_modeDrawing->setIcon(QIcon(":/icons/mode_drawing.png"));
-	action_modeDrawing->setShortcut(QKeySequence("F3"));
+	action_modeDrawing->setShortcut(QKeySequence("F2"));
     action_modeDrawing->setCheckable(true);
     connect(action_modeDrawing, &QAction::triggered, [this](){setMode(Sukyan::DRAWING);});
 
     action_modePolygon = new QAction(tr("&Polygon"), this);
     action_modePolygon->setIcon(QIcon(":/icons/mode_polygon.png"));
-	action_modePolygon->setShortcut(QKeySequence("F4"));
+	action_modePolygon->setShortcut(QKeySequence("F3"));
     action_modePolygon->setCheckable(true);
     connect(action_modePolygon, &QAction::triggered, [this](){setMode(Sukyan::POLYGON);});
+
+	action_modeContrast = new QAction(tr("&Contrast"), this);
+	action_modeContrast->setIcon(QIcon(":/icons/mode_contrast.png"));
+	action_modeContrast->setShortcut(QKeySequence("F4"));
+	action_modeContrast->setCheckable(true);
+	connect(action_modeContrast, &QAction::triggered, [this](){setMode(Sukyan::CONTRAST);});
 
 
     action_colorPicker = new QAction(tr("&Color picker"), this);
@@ -174,6 +184,7 @@ void MainWindow::initActions() {
     modeGroup->addAction(action_modeCursor);
     modeGroup->addAction(action_modeDrawing);
     modeGroup->addAction(action_modePolygon);
+	modeGroup->addAction(action_modeContrast);
 
     toolGroup = new QActionGroup(this);
     toolGroup->addAction(action_colorPicker);
@@ -188,8 +199,11 @@ void MainWindow::initActions() {
 	action_importPoints->setDisabled(true);
 	action_exportPoints = new QAction(tr("Export points"));
 	action_exportPoints->setDisabled(true);
+	action_contrast = new QAction(tr("Brightness / Contrast"));
+	action_contrast->setDisabled(true);
 	connect(action_importPoints, &QAction::triggered, [this]() {qobject_cast<Image*>(images->currentWidget())->importPoints();});
 	connect(action_exportPoints, &QAction::triggered, [this]() {qobject_cast<Image*>(images->currentWidget())->exportPoints();});
+	connect(action_contrast, &QAction::triggered, [this]() {contrastDialog->show();});
 
 	action_about = new QAction(tr("&About ..."), this);
 	connect(action_about, &QAction::triggered, [this](){QMessageBox::about(this, tr("About Sukyan"), tr(
@@ -228,6 +242,7 @@ void MainWindow::initMenu() {
     toolMenu->addAction(action_modeCursor);
     toolMenu->addAction(action_modeDrawing);
     toolMenu->addAction(action_modePolygon);
+	toolMenu->addAction(action_modeContrast);
     toolMenu->addSeparator();
     toolMenu->addAction(action_toolPen);
     toolMenu->addAction(action_toolLine);
@@ -236,9 +251,10 @@ void MainWindow::initMenu() {
     toolMenu->addAction(action_toolRubber);
     toolMenu->addAction(action_toolBucket);
 
-	QMenu* selectionMenu = menuBar()->addMenu(tr("&Selection"));
-	selectionMenu->addAction(action_importPoints);
-	selectionMenu->addAction(action_exportPoints);
+	QMenu* imageMenu = menuBar()->addMenu(tr("&Image"));
+	imageMenu->addAction(action_importPoints);
+	imageMenu->addAction(action_exportPoints);
+	imageMenu->addAction(action_contrast);
 
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
 	helpMenu->addAction(action_about);
@@ -256,6 +272,7 @@ void MainWindow::initToolbar() {
     mainToolbar->addAction(action_modeCursor);
     mainToolbar->addAction(action_modeDrawing);
     mainToolbar->addAction(action_modePolygon);
+	mainToolbar->addAction(action_modeContrast);
 
     QToolBar* toolToolbar = addToolBar("");
     toolToolbar->setMovable(false);
@@ -277,6 +294,8 @@ void MainWindow::connectImage() {
     connect(dockImage, SIGNAL(rotationChanged(int)), currentImage, SLOT(rotationChanged(int)));
     connect(dockImage, SIGNAL(zoomChanged(int)), currentImage, SLOT(zoomChanged(int)));
     connect(currentImage, SIGNAL(wheelZoomValueChanged(int)), dockImage, SLOT(zoomValueChanged(int)));
+	connect(contrastDialog, SIGNAL(contrastChanged(int, int)), currentImage, SLOT(setContrast(int, int)));
+	connect(currentImage, SIGNAL(contrastChanged(int, int)), contrastDialog, SLOT(setValues(int, int)));
 }
 
 void MainWindow::disconnectImage() {
@@ -285,6 +304,8 @@ void MainWindow::disconnectImage() {
     disconnect(dockImage, SIGNAL(rotationChanged(int)), currentImage, SLOT(rotationChanged(int)));
     disconnect(dockImage, SIGNAL(zoomChanged(int)), currentImage, SLOT(zoomChanged(int)));
     disconnect(currentImage, SIGNAL(wheelZoomValueChanged(int)), dockImage, SLOT(zoomValueChanged(int)));
+	disconnect(contrastDialog, SIGNAL(contrastChanged(int, int)), currentImage, SLOT(setContrast(int, int)));
+	disconnect(currentImage, SIGNAL(contrastChanged(int, int)), contrastDialog, SLOT(setValues(int, int)));
 }
 
 void MainWindow::setMode(Sukyan::mode m) {
@@ -356,6 +377,7 @@ void MainWindow::openImage() {
         dockExplorer->setEnabled(true);
 		action_importPoints->setEnabled(true);
 		action_exportPoints->setEnabled(true);
+		action_contrast->setEnabled(true);
     }
 }
 

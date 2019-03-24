@@ -53,7 +53,7 @@ DockSelection::DockSelection(QWidget *parent) : QWidget(parent) {
 	QHBoxLayout* colorLayout = new QHBoxLayout();
 	label = new QLabel(tr("Pick color :"));
 	colorPicker = new QToolButton(this);
-	setColor(Qt::black);
+	setColor(Qt::yellow);
 	colorLayout->addWidget(label);
 	colorLayout->addWidget(colorPicker);
 	connect(colorPicker, SIGNAL(clicked()), this, SLOT(setPolygonColor()));
@@ -109,8 +109,7 @@ DockSelection::DockSelection(QWidget *parent) : QWidget(parent) {
 
 	layout->addWidget(surfaceGroup);
 
-	setMinimumWidth(250);
-	setMaximumWidth(300);
+	setFixedWidth(300);
 	setMaximumHeight(500);
 
 	currentPolygonList = nullptr;

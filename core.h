@@ -3,6 +3,7 @@
 
 #include <QtWidgets>
 #include <QtGlobal>
+#include <cmath>
 #include <QDebug>
 
 namespace Sukyan {
@@ -16,11 +17,8 @@ namespace Sukyan {
         int rotation;
     } matrixInformation;
 
-    typedef enum mode {CURSOR, DRAWING, POLYGON} mode;
+	typedef enum mode {CURSOR, DRAWING, POLYGON, CONTRAST} mode;
     typedef enum drawingTool {PEN, LINE, RECTANGLE, ELLIPSE, BUCKET, RUBBER} drawingTool;
 };
-
-//@TODO :
-//Add button to enable/disable antialiasing and smooth transform
 
 #endif // CORE_H

@@ -14,5 +14,7 @@
         <file>icons/save_file.png</file>
         <file>icons/marong.png</file>
         <file>icons/ultrasound.png</file>
+        <file>icons/mode_contrast.png</file>
+        <file>icons/reset.png</file>
     </qresource>
 </RCC>

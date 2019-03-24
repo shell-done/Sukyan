@@ -2,7 +2,7 @@
 
 DockExplorer::DockExplorer(QWidget *parent) : QListWidget(parent) {
     setViewMode(QListWidget::IconMode);
-    setIconSize(QSize(200, 150));
+	setIconSize(QSize(200, 150));
     setResizeMode(QListWidget::Adjust);
     setFlow(QListView::TopToBottom);
     setMovement(QListView::Static);
@@ -10,7 +10,7 @@ DockExplorer::DockExplorer(QWidget *parent) : QListWidget(parent) {
     setStyleSheet("QListView::item {margin-top:15px;}");
 	setContextMenuPolicy(Qt::CustomContextMenu);
 
-    setFixedWidth(210);
+	setFixedWidth(210);
 	connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showContextMenu(QPoint)));
 }
 

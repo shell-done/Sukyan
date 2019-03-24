@@ -36,7 +36,8 @@ SOURCES += \
     dockdrawing.cpp \
     polygon.cpp \
     polygonslist.cpp \
-    marong.cpp
+    marong.cpp \
+    contrast.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -50,7 +51,8 @@ HEADERS += \
     dockdrawing.h \
     polygon.h \
     polygonslist.h \
-    marong.h
+    marong.h \
+    contrast.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -13,7 +13,7 @@ class Scene : public QGraphicsScene {
     Q_OBJECT
 
 public:
-	Scene(QPixmap* pxm, PolygonsList* polyList);
+	Scene(QString pxm, PolygonsList* polyList);
 	~Scene();
 
     void setMode(Sukyan::mode mode);
@@ -27,11 +27,16 @@ public:
 	bool getImageSaved();
 	bool getPolygonsSaved();
 
+	QPixmap* getBackgroundPixmap();
 	const QPixmap* getDrawingPixmap();
 	QPixmap getPolygonsPixmap();
 	PolygonsList* getPolygonsList();
 
+	void setContrast(int, int);
+
 private:
+	QPixmap backgroundPixmap;
+	QPixmap* editedBackgroundPixmap;
     QGraphicsPixmapItem* backgroundGraphicsPixmap;
 
 	bool imageSaved = true;
@@ -63,8 +68,16 @@ private:
 
     void useBucket(QPoint);
 
+	unsigned char* buffer;
+	int currentBrightness, currentContrast;
+
+	void changeContrast(int brightness, int contrast);
+
 private slots:
 	void updateScene();
+
+signals:
+	void contrastChanged(int, int);
 };
 
 #endif // SCENE_H

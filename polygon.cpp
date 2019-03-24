@@ -1,7 +1,7 @@
 #include "polygon.h"
 
 Polygon::Polygon(QString n) : QPolygon(), name(n) {
-	color = QColor(0, 0, 0);
+	color = Qt::yellow;
 	visible = true;
 	currentPoint = -1;
 }

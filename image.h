@@ -14,7 +14,7 @@ public:
 	explicit Image(QString filePath, PolygonsList* polygons, QWidget *parent = nullptr);
     ~Image();
 
-    QPixmap* pixmap() const;
+	QPixmap* pixmap() const;
     Sukyan::matrixInformation getMatrix();
 
     void setMode(Sukyan::mode mode);
@@ -34,7 +34,6 @@ public:
 
 private:
     QString filePath;
-    QPixmap* image;
 
     Scene* scene;
     View* view;
@@ -45,10 +44,13 @@ private slots:
     void rotationChanged(int);
     void zoomChanged(int);
 	void wheelZoomChanged(int);
+	void setContrast(int, int);
+	void contrastSceneChanged(int, int);
 
 signals:
     void cursorInformationChanged(Sukyan::cursorInformation);
     void wheelZoomValueChanged(int);
+	void contrastChanged(int, int);
 };
 
 #endif // IMAGE_H

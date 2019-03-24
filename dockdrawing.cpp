@@ -3,8 +3,7 @@
 DockDrawing::DockDrawing(QWidget *parent) : QWidget(parent) {
 	initWidgets();
 
-	setMinimumWidth(250);
-	setMaximumWidth(300);
+	setFixedWidth(300);
 	setMaximumHeight(150);
 }
 

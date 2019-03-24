@@ -9,6 +9,7 @@
 #include "dockselection.h"
 #include "dockexplorer.h"
 
+#include "contrast.h"
 #include "image.h"
 #include "marong.h"
 
@@ -46,6 +47,7 @@ private:
     QAction* action_modeCursor;
     QAction* action_modeDrawing;
     QAction* action_modePolygon;
+	QAction* action_modeContrast;
     QActionGroup* toolGroup;
     QAction* action_colorPicker;
     QAction* action_toolPen;
@@ -55,7 +57,8 @@ private:
     QAction* action_toolRubber;
     QAction* action_toolBucket;
 
-	//Surface
+	//Image
+	QAction* action_contrast;
 	QAction* action_importPoints;
 	QAction* action_exportPoints;
 
@@ -89,6 +92,7 @@ private:
     void setTool(Sukyan::drawingTool tool);
 
 	Marong* marong;
+	ContrastDialog* contrastDialog;
 
 private slots:
     void openImage();

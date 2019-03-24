@@ -1,9 +1,7 @@
 #include "image.h"
 
 Image::Image(QString fp, PolygonsList* polyList, QWidget* parent) : QWidget(parent), filePath(fp) {
-    image = new QPixmap(fp);
-
-	scene = new Scene(image, polyList);
+	scene = new Scene(fp, polyList);
 	view = new View(scene);
 
     QGridLayout* layout = new QGridLayout(this);
@@ -12,17 +10,17 @@ Image::Image(QString fp, PolygonsList* polyList, QWidget* parent) : QWidget(pare
 
     connect(view, SIGNAL(mousePositionChanged(QPoint)), this, SLOT(mousePositionChanged(QPoint)));
     connect(view, SIGNAL(wheelZoomValueChanged(int)), this, SLOT(wheelZoomChanged(int)));
+	connect(scene, SIGNAL(contrastChanged(int, int)), this, SLOT(contrastSceneChanged(int, int)));
 }
 
 
 Image::~Image() {
 	delete view;
 	delete scene;
-	delete image;
 }
 
 QPixmap* Image::pixmap() const {
-    return image;
+	return scene->getBackgroundPixmap();
 }
 
 Sukyan::matrixInformation Image::getMatrix() {
@@ -43,15 +41,17 @@ void Image::showDrawing(bool s) {scene->show(s);}
 void Image::clearDrawing() {scene->clear();}
 bool Image::save(bool keepFilePath) {
 	QString path = filePath;
+	QString fileName = QFileInfo(QFile(filePath).fileName()).baseName();
+
 	if(!keepFilePath) {
-		path = QFileDialog::getSaveFileName(this, tr("Save Image"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) + "/image", tr("Portable Network Graphics (*.png);;Joint Photographic Experts Group (*.jpg);;Joint Photographic Experts Group (*.jpeg);;BitMap (*.bmp);;Portable PixMap (*.ppm);;XBitMap (*.xbm);;XPixMap (*.xpm)"));
+		path = QFileDialog::getSaveFileName(this, tr("Save Image"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) + "/" + fileName, tr("Portable Network Graphics (*.png);;Joint Photographic Experts Group (*.jpg);;Joint Photographic Experts Group (*.jpeg);;BitMap (*.bmp);;Portable PixMap (*.ppm);;XBitMap (*.xbm);;XPixMap (*.xpm)"));
 		if(path == "")
 			return false;
 	}
-	QPixmap toSavePxmp(image->size());
+	QPixmap toSavePxmp(scene->getBackgroundPixmap()->size());
 
 	QPainter painter(&toSavePxmp);
-	painter.drawPixmap(0, 0, *image);
+	painter.drawPixmap(0, 0, *scene->getBackgroundPixmap());
 	painter.drawPixmap(0, 0, *scene->getDrawingPixmap());
 	painter.drawPixmap(0, 0, scene->getPolygonsPixmap());
 	painter.end();
@@ -63,7 +63,7 @@ bool Image::save(bool keepFilePath) {
 
 	while(!ok) {
 		QMessageBox::warning(this, "Sukyan", "Error while saving the image, please choose an other file path or file name");
-		QString newPath = QFileDialog::getSaveFileName(this, tr("Save Image"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) + "/image", tr("Portable Network Graphics (*.png);;Joint Photographic Experts Group (*.jpg);;Joint Photographic Experts Group (*.jpeg);;BitMap (*.bmp);;Portable PixMap (*.ppm);;XBitMap (*.xbm);;XPixMap (*.xpm)"));
+		QString newPath = QFileDialog::getSaveFileName(this, tr("Save Image"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) + "/" + fileName, tr("Portable Network Graphics (*.png);;Joint Photographic Experts Group (*.jpg);;Joint Photographic Experts Group (*.jpeg);;BitMap (*.bmp);;Portable PixMap (*.ppm);;XBitMap (*.xbm);;XPixMap (*.xpm)"));
 		if(newPath == "")
 			return false;
 
@@ -87,10 +87,10 @@ PolygonsList* Image::getPolygonsList() {return scene->getPolygonsList();}
 /*        SLOTS        */
 void Image::mousePositionChanged(QPoint p) {
     Sukyan::cursorInformation cursorInfo;
-    cursorInfo.position = p;
+	cursorInfo.position = p;
 
-    if(p.x() >= 0 && p.x() < image->width() && p.y() >= 0 && p.y() < image->height())
-        cursorInfo.pixelColor = QColor(image->toImage().pixel(p));
+	if(p.x() >= 0 && p.x() < scene->getBackgroundPixmap()->width() && p.y() >= 0 && p.y() < scene->getBackgroundPixmap()->height())
+		cursorInfo.pixelColor = QColor(scene->getBackgroundPixmap()->toImage().pixel(p));
     else
         cursorInfo.pixelColor = QColor(0, 0, 0, 0);
 
@@ -107,4 +107,12 @@ void Image::zoomChanged(int s) {
 
 void Image::wheelZoomChanged(int s) {
     emit wheelZoomValueChanged(s);
+}
+
+void Image::setContrast(int b, int c) {
+	scene->setContrast(b, c);
+}
+
+void Image::contrastSceneChanged(int b, int c) {
+	emit contrastChanged(b, c);
 }

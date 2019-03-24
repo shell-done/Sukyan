@@ -84,8 +84,7 @@ DockImage::DockImage(QWidget *parent) : QWidget(parent) {
 
     layout->addWidget(displayGroup);
 
-    setMinimumWidth(250);
-    setMaximumWidth(300);
+	setFixedWidth(300);
     setMaximumHeight(310);
 }
 
