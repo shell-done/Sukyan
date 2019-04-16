@@ -115,7 +115,7 @@ void Scene::setContrast(int b, int c) {
 
 void Scene::updateScene() {
 	while(graphicsPolygons.size()) {
-		QGraphicsPolygonItem* p = graphicsPolygons.takeAt(0);
+		QAbstractGraphicsShapeItem* p = graphicsPolygons.takeAt(0);
 		removeItem(p);
 		delete p;
 
@@ -131,23 +131,36 @@ void Scene::updateScene() {
 
 
 	for(int i=0; i<polygons->size(); i++) {
-		QGraphicsPolygonItem* p = this->addPolygon(polygons->at(i));
-		QPen pen(polygons->at(i).getColor());
-		pen.setWidth(1);
-		p->setPen(pen);
-		p->setVisible(polygons->at(i).getVisibility());
+		if(polygons->at(i).getClosedShape()) {
+			QGraphicsPolygonItem* p = this->addPolygon(polygons->at(i));
+			QPen pen(polygons->at(i).getColor());
+			pen.setWidth(1);
+			p->setPen(pen);
+			p->setVisible(polygons->at(i).getVisibility());
+			graphicsPolygons << p;
+		} else {
+			QPainterPath path = QPainterPath();
+			path.addPolygon(polygons->at(i));
+			QGraphicsPathItem* p = this->addPath(path);
+
+			QPen pen(polygons->at(i).getColor());
+			pen.setWidth(1);
+			p->setPen(pen);
+			p->setVisible(polygons->at(i).getVisibility());
+			graphicsPolygons << p;
+		}
 
 		QList<QGraphicsEllipseItem*> e;
 		for(int j=0; j<polygons->at(i).size(); j++) {
-			QRectF rect(polygons->at(i).at(j) - QPointF(1, 1), QSize(2, 2));
+			QRectF rect(polygons->at(i).at(j) - QPointF(2, 2), QSize(4, 4));
 			e << this->addEllipse(rect);
 
+			e[j]->setPen(QPen(Qt::transparent));
 			e[j]->setBrush(QBrush(polygons->at(i).getColor()));
 			if(i == polygons->getCurrentIndex())
 				if(j == polygons->at(i).getCurrentPointIdx())
 					e[j]->setBrush(QBrush(Qt::red));
 
-			e[j]->setPen(QPen(Qt::transparent));
 			e[j]->setVisible(polygons->at(i).getVisibility());
 			if(polygons->at(i).getVisibility()) {
 				e[j]->setCursor(Qt::OpenHandCursor);
@@ -157,8 +170,6 @@ void Scene::updateScene() {
 			}
 		}
 		graphicsPolygonsPoint << e;
-
-		graphicsPolygons << p;
 	}
 }
 
@@ -175,7 +186,7 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event) {
 
 	pointGrabbed = false;
 	if(mode == Sukyan::POLYGON) {
-		if(polygons->clickOnPoint(event->scenePos(), 1)) {
+		if(polygons->clickOnPoint(event->scenePos(), 5)) {
 			pointGrabbed = true;
 			grabbedPointDist.setX(event->scenePos().toPoint().x() - polygons->getCurrentPolygonPoint().x());
 			grabbedPointDist.setY(event->scenePos().toPoint().y() - polygons->getCurrentPolygonPoint().y());
@@ -285,7 +296,11 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
     QGraphicsScene::mouseReleaseEvent(event);
     buttonPressed = Qt::NoButton;
-	pointGrabbed = false;
+
+	if(pointGrabbed) {
+		graphicsPolygonsPoint[polygons->getCurrentIndex()][polygons->getCurrentPolygonPointIndex()]->setCursor(Qt::OpenHandCursor);
+		pointGrabbed = false;
+	}
 
 	if(mode == Sukyan::CONTRAST) {
 		int contrast = firstClick.y() - event->screenPos().y();

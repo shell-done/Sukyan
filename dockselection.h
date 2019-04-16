@@ -28,6 +28,7 @@ private:
 	QPushButton* newPolygonButton;
 	QPushButton* delPolygonButton;
 	QCheckBox* visibility;
+	QCheckBox* closedShape;
 	QToolButton* colorPicker;
 
 	QGroupBox* pointsGroup;
@@ -57,6 +58,7 @@ private slots:
 	void setCurrentPolygonName(const QString &text);
 	void setPolygonVisibility(int state);
 	void setPolygonColor();
+	void setPolygonClosedShape(int state);
 	void setPointListIndex(int);
 	void delPoint();
 	void changePoint(int);

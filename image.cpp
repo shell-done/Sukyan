@@ -62,7 +62,7 @@ bool Image::save(bool keepFilePath) {
 	bool ok = false;
 
 	while(!ok) {
-		QMessageBox::warning(this, "Sukyan", "Error while saving the image, please choose an other file path or file name");
+		QMessageBox::warning(this, "Sukyan", "Error while saving the image, please choose another file path or file name");
 		QString newPath = QFileDialog::getSaveFileName(this, tr("Save Image"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) + "/" + fileName, tr("Portable Network Graphics (*.png);;Joint Photographic Experts Group (*.jpg);;Joint Photographic Experts Group (*.jpeg);;BitMap (*.bmp);;Portable PixMap (*.ppm);;XBitMap (*.xbm);;XPixMap (*.xpm)"));
 		if(newPath == "")
 			return false;
@@ -79,6 +79,7 @@ void Image::importPoints() {
 }
 
 QString Image::getPath() {return filePath;}
+QString Image::getFileName() {return QFileInfo(QFile(filePath).fileName()).fileName();}
 bool Image::getImageSaved() {return scene->getImageSaved();}
 bool Image::getPolygonsSaved() {return scene->getPolygonsSaved();}
 PolygonsList* Image::getPolygonsList() {return scene->getPolygonsList();}

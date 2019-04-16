@@ -16,6 +16,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     currentPen.setWidth(10);
     currentPen.setColor(Qt::black);
 
+	qsrand(static_cast<uint>(QDateTime::currentMSecsSinceEpoch() / 1000));
+
     connect(dockExplorer, SIGNAL(currentRowChanged(int)), this, SLOT(changeImage(int)));
 	connect(dockExplorer, SIGNAL(closeImage(int)), this, SLOT(closeImage(int)));
 	connect(dockDrawing, SIGNAL(colorChanged(QColor)), this, SLOT(setPenColor(QColor)));
@@ -29,6 +31,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 	contrastDialog = new ContrastDialog(this);
 	contrastDialog->hide();
+
+	copyPolygonsDialog = new CopyPolygonsDialog(this);
+	copyPolygonsDialog->hide();
+	connect(copyPolygonsDialog, SIGNAL(copy(QString, QStringList)), this, SLOT(copyPolygons(QString, QStringList)));
+
+	splitDialog = new SplitDialog(this);
 
 	setWindowIcon(QIcon(":/icons/ultrasound.png"));
 }
@@ -80,13 +88,13 @@ void MainWindow::initActions() {
 	action_openFile->setShortcut(QKeySequence("Ctrl+o"));
     connect(action_openFile, SIGNAL(triggered()), this, SLOT(openImage()));
 
-    action_saveFile = new QAction(tr("&Save File..."), this);
+	action_saveFile = new QAction(tr("&Save ..."), this);
 	action_saveFile->setIcon(QIcon(":/icons/save_file.png"));
 	action_saveFile->setShortcut(QKeySequence("Ctrl+s"));
 	action_saveFile->setDisabled(true);
 	connect(action_saveFile, &QAction::triggered, [this](){saveImage(images->currentIndex());});
 
-	action_saveFileAs = new QAction(tr("&Save File..."), this);
+	action_saveFileAs = new QAction(tr("&Save as..."), this);
 	action_saveFileAs->setIcon(QIcon(":/icons/save_file_as.png"));
 	action_saveFileAs->setShortcut(QKeySequence("Ctrl+shift+s"));
 	action_saveFileAs->setDisabled(true);
@@ -195,20 +203,50 @@ void MainWindow::initActions() {
     toolGroup->addAction(action_toolRubber);
     toolGroup->addAction(action_toolBucket);
 
+	action_contrast = new QAction(tr("Brightness / Contrast"));
+	action_contrast->setDisabled(true);
 	action_importPoints = new QAction(tr("Import points"));
 	action_importPoints->setDisabled(true);
 	action_exportPoints = new QAction(tr("Export points"));
 	action_exportPoints->setDisabled(true);
-	action_contrast = new QAction(tr("Brightness / Contrast"));
-	action_contrast->setDisabled(true);
+	action_copyPoints = new QAction(tr("Copy polygons to..."));
+	action_copyPoints->setDisabled(true);
+	action_splitPolygon = new QAction(tr("Sample polygon..."));
+	action_splitPolygon->setDisabled(true);
+
+	connect(action_contrast, &QAction::triggered, [this]() {contrastDialog->show();});
 	connect(action_importPoints, &QAction::triggered, [this]() {qobject_cast<Image*>(images->currentWidget())->importPoints();});
 	connect(action_exportPoints, &QAction::triggered, [this]() {qobject_cast<Image*>(images->currentWidget())->exportPoints();});
-	connect(action_contrast, &QAction::triggered, [this]() {contrastDialog->show();});
+	connect(action_copyPoints, &QAction::triggered, [this]() {
+		Image* currentImage = qobject_cast<Image*>(images->currentWidget());
+		PolygonsList* pls = currentImage->getPolygonsList();
+
+		QStringList ils;
+		for(int i=0; i<images->count(); i++) {
+			if(qobject_cast<Image*>(images->widget(i)) == currentImage)
+				continue;
+
+			ils << qobject_cast<Image*>(images->widget(i))->getFileName();
+		}
+
+		if(ils.isEmpty()) {
+			QMessageBox::information(this, tr("Sukyan"), tr("At least 2 images must be opened to copy points"));
+			return;
+		}
+		if(pls->size() == 0) {
+			QMessageBox::information(this, tr("Sukyan"), tr("No polygons to copy"));
+			return;
+		}
+		copyPolygonsDialog->openDialog(pls, ils);
+	});
+	connect(action_splitPolygon, &QAction::triggered, [this]() {
+		splitDialog->openDialog(qobject_cast<Image*>(images->currentWidget())->getPolygonsList());
+	});
 
 	action_about = new QAction(tr("&About ..."), this);
 	connect(action_about, &QAction::triggered, [this](){QMessageBox::about(this, tr("About Sukyan"), tr(
 																			   "<b>About Sukyan</b><br/> \
-																			   Software made by Alexandre THOMAS in CIR 2 at ISEN Yncréa Ouest Rennes <br/> \
+																			   Software made by Alexandre THOMAS in CIR2 at ISEN Yncréa Ouest Rennes <br/> \
 																			   <a href='alexandre-thomas.fr'>alexandre-thomas.fr</a> <br/> <br/>\
 																			   Icons by icons8.com"
 																			   ));});
@@ -252,9 +290,12 @@ void MainWindow::initMenu() {
     toolMenu->addAction(action_toolBucket);
 
 	QMenu* imageMenu = menuBar()->addMenu(tr("&Image"));
+	imageMenu->addAction(action_contrast);
+	imageMenu->addSeparator();
 	imageMenu->addAction(action_importPoints);
 	imageMenu->addAction(action_exportPoints);
-	imageMenu->addAction(action_contrast);
+	imageMenu->addAction(action_copyPoints);
+	imageMenu->addAction(action_splitPolygon);
 
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
 	helpMenu->addAction(action_about);
@@ -326,59 +367,65 @@ void MainWindow::setTool(Sukyan::drawingTool t) {
 
 /*        SLOTS        */
 void MainWindow::openImage() {
-    QString filePath = QFileDialog::getOpenFileName(this, tr("Open Image"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation), tr("Image Files (*.png *.jpg *.jpeg *.bmp *.ppm *.xbm *.xpm)"));
+	QStringList files = QFileDialog::getOpenFileNames(this, tr("Open Images"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation), tr("Image Files (*.png *.jpg *.jpeg *.bmp *.ppm *.xbm *.xpm)"));
 
-    if(filePath.trimmed() == "")
-        return;
+	for(int i=0; i<files.length(); i++) {
+		QString filePath = files[i];
 
-    if(QPixmap(filePath).isNull()) {
-		QMessageBox::warning(this, "Sukyan", tr("Error while loading image. Check if the path is correct and if the image is not corrupted"));
-        return;
-    }
+		if(filePath.trimmed() == "")
+			continue;
 
-	for(int i=0; i<images->count(); i++) {
-		Image* img = qobject_cast<Image*>(images->widget(i));
-		if(filePath == img->getPath()) {
-			QMessageBox::warning(this, "Sukyan", tr("Error while loading image : file already opened"));
-			return;
+		if(QPixmap(filePath).isNull()) {
+			QMessageBox::warning(this, "Sukyan", tr("Error while loading image. Check if the path is correct and if the image is not corrupted"));
+			continue;
+		}
+
+		for(int i=0; i<images->count(); i++) {
+			Image* img = qobject_cast<Image*>(images->widget(i));
+			if(filePath == img->getPath()) {
+				QMessageBox::warning(this, "Sukyan", tr("Error while loading image : file already open"));
+				continue;
+			}
+		}
+
+		if(!tempView)
+			disconnectImage();
+
+		PolygonsList* polyList = new PolygonsList();
+		dockSelection->setCurrentPolygonList(polyList);
+
+
+		Image* newImg = new Image(filePath, polyList, this);
+		newImg->setPen(currentPen);
+		newImg->setMode(mode);
+		images->addWidget(newImg);
+		images->setCurrentIndex(images->count() - 1);
+		connectImage();
+
+		setCentralWidget(images);
+		dockExplorer->addThumbnail(newImg->pixmap(), QFileInfo(QFile(filePath).fileName()).fileName());
+
+		dockImage->rotationValueChanged(0);
+		dockImage->zoomValueChanged(100);
+
+		//When the first image is loaded, we delete the tempView and enable dock widgets
+		if(tempView) {
+			delete tempView;
+			tempView = nullptr;
+
+			action_saveFile->setEnabled(true);
+			action_saveFileAs->setEnabled(true);
+			dockImage->setEnabled(true);
+			dockDrawing->setEnabled(true);
+			dockSelection->setEnabled(true);
+			dockExplorer->setEnabled(true);
+			action_contrast->setEnabled(true);
+			action_importPoints->setEnabled(true);
+			action_exportPoints->setEnabled(true);
+			action_copyPoints->setEnabled(true);
+			action_splitPolygon->setEnabled(true);
 		}
 	}
-
-    if(!tempView)
-        disconnectImage();
-
-	PolygonsList* polyList = new PolygonsList();
-	dockSelection->setCurrentPolygonList(polyList);
-
-
-	Image* newImg = new Image(filePath, polyList, this);
-	newImg->setPen(currentPen);
-	newImg->setMode(mode);
-    images->addWidget(newImg);
-    images->setCurrentIndex(images->count() - 1);
-    connectImage();
-
-	setCentralWidget(images);
-    dockExplorer->addThumbnail(newImg->pixmap(), QFileInfo(QFile(filePath).fileName()).fileName());
-
-    dockImage->rotationValueChanged(0);
-    dockImage->zoomValueChanged(100);
-
-    //When the first image is loaded, we delete the tempView and enable dock widgets
-    if(tempView) {
-        delete tempView;
-        tempView = nullptr;
-
-		action_saveFile->setEnabled(true);
-		action_saveFileAs->setEnabled(true);
-        dockImage->setEnabled(true);
-		dockDrawing->setEnabled(true);
-        dockSelection->setEnabled(true);
-        dockExplorer->setEnabled(true);
-		action_importPoints->setEnabled(true);
-		action_exportPoints->setEnabled(true);
-		action_contrast->setEnabled(true);
-    }
 }
 
 void MainWindow::saveImage(int idx) {
@@ -457,6 +504,24 @@ void MainWindow::changeImage(int idx) {
     dockImage->zoomValueChanged(mtrxInfo.scale);
 
 	dockSelection->setCurrentPolygonList(qobject_cast<Image*>(images->currentWidget())->getPolygonsList());
+}
+
+void MainWindow::copyPolygons(QString dest, QStringList polygonsToCopy) {
+	for(int i=0; i<images->count(); i++) {
+		if(qobject_cast<Image*>(images->widget(i))->getFileName() == dest) {
+			PolygonsList* srcPl = qobject_cast<Image*>(images->currentWidget())->getPolygonsList();
+			PolygonsList* destPl = qobject_cast<Image*>(images->widget(i))->getPolygonsList();
+
+			for(int i=0; i<srcPl->size(); i++) {
+				if(polygonsToCopy.contains(srcPl->at(i).getName())) {
+					destPl->newPolygon(srcPl->at(i));
+				}
+			}
+
+			destPl->updateScene();
+			destPl->setCurrentIndex(destPl->size() - 1);
+		}
+	}
 }
 
 void MainWindow::setPenColor(QColor c) {

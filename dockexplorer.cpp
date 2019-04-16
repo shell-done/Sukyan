@@ -2,12 +2,19 @@
 
 DockExplorer::DockExplorer(QWidget *parent) : QListWidget(parent) {
     setViewMode(QListWidget::IconMode);
-	setIconSize(QSize(200, 150));
-    setResizeMode(QListWidget::Adjust);
-    setFlow(QListView::TopToBottom);
+	setIconSize(QSize(175, 115));
+	//setResizeMode(QListWidget::Adjust);
+	//setFlow(QListView::TopToBottom);
     setMovement(QListView::Static);
+	setSpacing(5);
 
-    setStyleSheet("QListView::item {margin-top:15px;}");
+	setStyleSheet("\
+				  QListWidget::item:hover,\
+				  QListWidget::item:disabled:hover,\
+				  QListWidget::item:hover:!active,\
+				  {background-color: red;}");
+
+	setStyleSheet("QListWidget::item {margin: 10px;}");
 	setContextMenuPolicy(Qt::CustomContextMenu);
 
 	setFixedWidth(210);
@@ -23,6 +30,9 @@ void DockExplorer::addThumbnail(QPixmap* pixmap, QString fileName) {
 
     QListWidgetItem* item = new QListWidgetItem(QIcon(*pixmap), thumbTitle, this);
     thumbnails.append(item);
+
+	item->setSizeHint(QSize(180, 140));
+	item->setTextAlignment(Qt::AlignCenter);
 
     addItem(item);
     blockSignals(true);

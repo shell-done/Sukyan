@@ -37,7 +37,9 @@ SOURCES += \
     polygon.cpp \
     polygonslist.cpp \
     marong.cpp \
-    contrast.cpp
+    contrast.cpp \
+    copypolygonsdialog.cpp \
+    splitdialog.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -52,7 +54,9 @@ HEADERS += \
     polygon.h \
     polygonslist.h \
     marong.h \
-    contrast.h
+    contrast.h \
+    copypolygonsdialog.h \
+    splitdialog.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -61,3 +65,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 RESOURCES += \
     icons.qrc
+
+RC_ICONS = icon.ico

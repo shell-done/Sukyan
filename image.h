@@ -28,6 +28,7 @@ public:
 	void importPoints();
 
 	QString getPath();
+	QString getFileName();
 	bool getImageSaved();
 	bool getPolygonsSaved();
 	PolygonsList* getPolygonsList();

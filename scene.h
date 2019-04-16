@@ -59,7 +59,7 @@ private:
     QGraphicsPixmapItem* drawingGraphicsPixmap;
 
 	PolygonsList* polygons;
-	QList<QGraphicsPolygonItem*> graphicsPolygons;
+	QList<QAbstractGraphicsShapeItem*> graphicsPolygons;
 	QList<QList<QGraphicsEllipseItem*>> graphicsPolygonsPoint;
 
     void mousePressEvent(QGraphicsSceneMouseEvent*);

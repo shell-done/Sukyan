@@ -47,8 +47,18 @@ DockSelection::DockSelection(QWidget *parent) : QWidget(parent) {
 	visibLayout->addWidget(visibility);
 
 	connect(visibility, SIGNAL(stateChanged(int)), this, SLOT(setPolygonVisibility(int)));
-
 	polygonsLayout->addLayout(visibLayout);
+
+	QHBoxLayout* cshapeLayout = new QHBoxLayout();
+	label = new QLabel(tr("Closed shape :"), this);
+	closedShape = new QCheckBox(this);
+	closedShape->setLayoutDirection(Qt::RightToLeft);
+	closedShape->setChecked(true);
+	cshapeLayout->addWidget(label);
+	cshapeLayout->addWidget(closedShape);
+
+	connect(closedShape, SIGNAL(stateChanged(int)), this, SLOT(setPolygonClosedShape(int)));
+	polygonsLayout->addLayout(cshapeLayout);
 
 	QHBoxLayout* colorLayout = new QHBoxLayout();
 	label = new QLabel(tr("Pick color :"));
@@ -204,6 +214,15 @@ void DockSelection::setPolygonColor() {
 		currentPolygonList->setCurrentPolygonColor(c);
 }
 
+void DockSelection::setPolygonClosedShape(int state) {
+	if(state)
+		currentPolygonList->setCurrentPolygonClosedShape(true);
+	else
+		currentPolygonList->setCurrentPolygonClosedShape(false);
+
+	updateDock();
+}
+
 void DockSelection::setPointListIndex(int idx) {
 	pointX->blockSignals(true);
 	pointY->blockSignals(true);
@@ -247,6 +266,7 @@ void DockSelection::updateDock() {
 
 	if(currentPolygonList->getCurrentIndex() != -1) {
 		visibility->setChecked(currentPolygonList->getCurrentPolygonVisibility());
+		closedShape->setChecked(currentPolygonList->getCurrentPolygonClosedShape());
 		setColor(currentPolygonList->getCurrentPolygonColor());
 
 		QStringList pList = currentPolygonList->getCurrentPolygonPointsStr();
@@ -262,7 +282,7 @@ void DockSelection::updateDock() {
 			pointsGroup->setDisabled(true);
 		}
 
-		if(pList.size() == 2) {
+		if(pList.size() == 2 || !currentPolygonList->getCurrentPolygonClosedShape()) {
 			double distance = currentPolygonList->getCurrentPolygonSurface();
 
 			surfaceGroup->setEnabled(true);

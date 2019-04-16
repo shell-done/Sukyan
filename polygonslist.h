@@ -14,29 +14,33 @@ class PolygonsList : public QObject {
 
 public:
 	PolygonsList();
+	PolygonsList(const PolygonsList &oldPoly);
 	~PolygonsList();
 
 	void setCurrentIndex(int);
 	int getCurrentIndex();
 
-	class Polygon at(int);
-	int size();
+	class Polygon at(int) const;
+	int size() const;
 	QStringList getPolygonsName();
-	bool nameAlreadyExists(QString);
+	bool nameExists(QString);
 	bool clickOnPoint(QPointF, int);
 	bool saved();
 
 	void newPolygon();
+	void newPolygon(const class Polygon oldPoly);
 	void delPolygon();
 	void setCurrentPolygonName(QString str);
 	void setCurrentPolygonVisible(bool);
 	void setCurrentPolygonColor(QColor);
+	void setCurrentPolygonClosedShape(bool);
 	void setCurrentPolygonPointIndex(int);
 	void setCurrentPolygonPoint(QPoint);
 
 	QString getCurrentPolygonName();
 	bool getCurrentPolygonVisibility();
 	QColor getCurrentPolygonColor();
+	bool getCurrentPolygonClosedShape();
 	QVector<QPoint> getCurrentPolygonPoints();
 	QStringList getCurrentPolygonPointsStr();
 	int getCurrentPolygonPointIndex();

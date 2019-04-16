@@ -8,6 +8,16 @@ PolygonsList::PolygonsList() {
 	pointsSaved = true;
 }
 
+PolygonsList::PolygonsList(const PolygonsList &oldPolyList) : QObject () {
+	for(int i=0; i<oldPolyList.size(); i++) {
+		Polygon* np = new Polygon(oldPolyList.at(i));
+		polygons.append(np);
+	}
+
+	currentIndex = oldPolyList.currentIndex;
+	pointsSaved = oldPolyList.pointsSaved;
+}
+
 PolygonsList::~PolygonsList() {
 	for(int i=0; i<polygons.size(); i++)
 		delete polygons[i];
@@ -17,9 +27,9 @@ void PolygonsList::setCurrentIndex(int idx) {currentIndex = idx;}
 
 int PolygonsList::getCurrentIndex() {return currentIndex;}
 
-class Polygon PolygonsList::at(int idx) {return *(polygons.at(idx));}
+class Polygon PolygonsList::at(int idx) const {return *(polygons.at(idx));}
 
-int PolygonsList::size() {return polygons.size();}
+int PolygonsList::size() const {return polygons.size();}
 
 QStringList PolygonsList::getPolygonsName() {
 	QStringList list;
@@ -30,10 +40,17 @@ QStringList PolygonsList::getPolygonsName() {
 	return list;
 }
 
-bool PolygonsList::nameAlreadyExists(QString str) {
-	for(int i=0; i<polygons.size(); i++)
-		if(polygons[i]->getName() == str)
-			return true;
+bool PolygonsList::nameExists(QString str) {
+	for(int i=0; i<polygons.size(); i++) {
+		if(polygons[i]->getName() == str) {
+			if(polygons[i]->isEmpty()) {
+				Polygon* poly = polygons.takeAt(i);
+				delete poly;
+			} else {
+				return true;
+			}
+		}
+	}
 
 	return false;
 }
@@ -44,7 +61,7 @@ bool PolygonsList::clickOnPoint(QPointF p, int dist) {
 			continue;
 
 		for(int j=0; j<polygons[i]->size(); j++) {
-			if(pow(p.x() - polygons[i]->at(j).x(), 2) + pow(p.y() - polygons[i]->at(j).y(), 2) <= dist) {
+			if(pow(p.x() - polygons[i]->at(j).x(), 2) + pow(p.y() - polygons[i]->at(j).y(), 2) <= pow(dist, 2)) {
 				setCurrentIndex(i);
 				setCurrentPolygonPointIndex(j);
 				return true;
@@ -82,6 +99,28 @@ void PolygonsList::newPolygon() {
 	pointsSaved = false;
 }
 
+void PolygonsList::newPolygon(const Polygon oldPoly) {
+	Polygon* np = new Polygon(oldPoly);
+	QString name = np->getName();
+
+	if(nameExists(name)) {
+		int idx = 1;
+		bool ok = false;
+
+		while(!ok) {
+			idx++;
+			if(!nameExists(name + " (" + QString::number(idx) + ")"))
+				ok = true;
+		}
+
+		name += " (" + QString::number(idx) + ")";
+	}
+
+	np->setName(name);
+
+	polygons.append(np);
+}
+
 void PolygonsList::delPolygon() {
 	if(currentIndex < 0 || currentIndex >= polygons.size())
 		return;
@@ -116,6 +155,11 @@ void PolygonsList::setCurrentPolygonColor(QColor c) {
 	updateScene();
 }
 
+void PolygonsList::setCurrentPolygonClosedShape(bool b) {
+	polygons[currentIndex]->setClosedShape(b);
+	updateScene();
+}
+
 void PolygonsList::setCurrentPolygonPointIndex(int idx) {
 	polygons[currentIndex]->setCurrentPointIdx(idx);
 	updateScene();
@@ -134,6 +178,8 @@ QString PolygonsList::getCurrentPolygonName() {return polygons[currentIndex]->ge
 bool PolygonsList::getCurrentPolygonVisibility() {return polygons[currentIndex]->getVisibility();}
 
 QColor PolygonsList::getCurrentPolygonColor() {return polygons[currentIndex]->getColor();}
+
+bool PolygonsList::getCurrentPolygonClosedShape() {return polygons[currentIndex]->getClosedShape();}
 
 QVector<QPoint> PolygonsList::getCurrentPolygonPoints() {
 	QVector<QPoint> vect(*polygons[currentIndex]);
@@ -189,7 +235,7 @@ void PolygonsList::updateScene() {emit updtScene();}
 
 
 bool PolygonsList::exportCSV(QWidget* parent) {
-	QString filename = QFileDialog::getSaveFileName(parent, tr("Save polygons"), QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/polygons.csv", "CSV files (.csv)");
+	QString filename = QFileDialog::getSaveFileName(parent, tr("Save polygons"), QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/polygons.csv", "Comma separated value files (*.csv)");
 	if(filename == "")
 		return false;
 
@@ -222,7 +268,7 @@ bool PolygonsList::exportCSV(QWidget* parent) {
 		}
 
 	} else {
-		QMessageBox::warning(parent, "Sukyan", tr("Cannot save the file due to a permission error"));
+		QMessageBox::warning(parent, "Sukyan", tr("Can't save the file due to a permission error"));
 		return false;
 	}
 
@@ -237,7 +283,7 @@ void PolygonsList::importCSV(QWidget* parent) {
 
 	QFile file(filename);
 	if (!file.open(QIODevice::ReadOnly)) {
-		QMessageBox::warning(parent, "Sukyan", tr("Cannot read the file : ") + file.errorString());
+		QMessageBox::warning(parent, "Sukyan", tr("Can't read the file : ") + file.errorString());
 		return;
 	}
 
@@ -280,13 +326,13 @@ void PolygonsList::importCSV(QWidget* parent) {
 			if(newPolygons[i]->getName() == name)
 				nameAlreadyExistsInNewPolygons = true;
 
-		if(nameAlreadyExists(name) || nameAlreadyExistsInNewPolygons) {
+		if(nameExists(name) || nameAlreadyExistsInNewPolygons) {
 			int idx = 1;
 			bool ok = false;
 
 			while(!ok) {
 				idx++;
-				if(!nameAlreadyExists(name + " (" + QString::number(idx) + ")"))
+				if(!nameExists(name + " (" + QString::number(idx) + ")"))
 					ok = true;
 			}
 

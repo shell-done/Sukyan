@@ -10,6 +10,8 @@
 #include "dockexplorer.h"
 
 #include "contrast.h"
+#include "copypolygonsdialog.h"
+#include "splitdialog.h"
 #include "image.h"
 #include "marong.h"
 
@@ -61,6 +63,8 @@ private:
 	QAction* action_contrast;
 	QAction* action_importPoints;
 	QAction* action_exportPoints;
+	QAction* action_copyPoints;
+	QAction* action_splitPolygon;
 
     //About
 	QAction* action_about;
@@ -93,6 +97,8 @@ private:
 
 	Marong* marong;
 	ContrastDialog* contrastDialog;
+	CopyPolygonsDialog* copyPolygonsDialog;
+	SplitDialog* splitDialog;
 
 private slots:
     void openImage();
@@ -100,6 +106,7 @@ private slots:
 	void saveImageAs(int);
 	void closeImage(int);
     void changeImage(int idx);
+	void copyPolygons(QString dest, QStringList polygonsToCopy);
 
 	void setPenColor(QColor c);
 	void setPenWidth(int);
